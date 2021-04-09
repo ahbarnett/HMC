@@ -1,9 +1,9 @@
 % 1D demo phase-space anim for HMC, for intuition. MATLAB, self-contained script
 % Also tests a variable-scale pdf: log-normal.
-% Barnett for Chirag & Bob project. 2/12/21
+% Barnett for Chirag & Bob project. 2/12/21. let bad traj's run 4/9/21.
 
 clear
-s = 0.7;                % std dev in log q, difficulty parameter (1.4 = hard)
+s = 1.4;                % std dev in log q, difficulty parameter (1.4 = hard)
 Vpos = @(q) log(q) + 0.5 * (log(q)/s).^2;   % log-normal centered at log(q)=0
 V = @(q) neginf(Vpos(q),q);
 gradV = @(q) (1+real(log(q))/s^2)./q;
@@ -30,9 +30,9 @@ Hplt = H(q,p)'; contourf(qg,pg,exp(-Hplt),30); colormap(hot(256));
 colorbar; title('phase space: \pi(q,p) unnorm'); xlabel('q'); ylabel('p');
 axis tight; oaxis = axis; hold on;
 
-eps = 0.05;    % alg params
-L = 100;
-N = 1000;       % MCMC steps
+eps = 0.005;    % 0.05   alg params.   .0.005 good for s=1.4
+L = 1000;  % 100
+N = 10000;       % MCMC steps
 psi = 1.0 * pi/2;  % mixing ang: pi/2=total randomize p
 q=1; p=1;  % initial, somewhere in the mass
 
@@ -89,17 +89,18 @@ function [q,p] = leapfrog(q,p,eps,L,gradV,verb)
   for l=1:L            % not the efficient way but who cares for now
     pold1 = p;   % for plot
     p = p - (eps/2)*gradV(q);
-    if abs(p)>5, fprintf('cool it! bad p=%.3g\n',p); p = randn(); end  % hack
+    %if abs(p)>5, fprintf('cool it! bad p=%.3g\n',p); end %p = randn(); end  % hack
     if verb>1, plot([q q],[pold1 p],'-','color',c); end
     qold = q;
     q = q + eps*p;
-    if q<=0, fprintf('ouch! bad q=%.3g\n',q); q=1; p=randn(); end   % hack to recover from disaster for log-normal
+    if q<=0, q=nan; end %fprintf('ouch! bad q=%.3g\n',q); q=1; p=randn(); end   % hack to recover from disaster for log-normal
     if verb>1, plot([qold q],[p p],'-','color',c); end
     pold = p;
     p = p - (eps/2)*gradV(q);
     if verb>1, plot([q q],[pold p],'-','color',c); end
     if verb==1, plot([qold q], [pold1 p], '.-', 'markersize',ms,'color',c); end
   end
+  %if isnan(p), fprintf('leapfrog returned NaN!\n'); end
 end
 
 function [Ctau tau tau0 ESS] = autoc(v)   % v is row vec, scalar for now
