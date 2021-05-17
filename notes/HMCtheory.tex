@@ -1,0 +1,391 @@
+\documentclass[10pt]{article}
+\oddsidemargin = 0.2in
+\topmargin = -0.5in
+\textwidth 6in
+\textheight 8.5in
+
+\usepackage{graphicx,bm,hyperref,amssymb,amsmath,amsthm}
+\usepackage{algorithmic,xcolor}
+
+% -------------------------------------- macros --------------------------
+% general ...
+\newcommand{\bi}{\begin{itemize}}
+\newcommand{\ei}{\end{itemize}}
+\newcommand{\ben}{\begin{enumerate}}
+\newcommand{\een}{\end{enumerate}}
+\newcommand{\be}{\begin{equation}}
+\newcommand{\ee}{\end{equation}}
+\newcommand{\bea}{\begin{eqnarray}} 
+\newcommand{\eea}{\end{eqnarray}}
+\newcommand{\ba}{\begin{align}} 
+\newcommand{\ea}{\end{align}}
+\newcommand{\bse}{\begin{subequations}} 
+\newcommand{\ese}{\end{subequations}}
+\newcommand{\bc}{\begin{center}}
+\newcommand{\ec}{\end{center}}
+\newcommand{\bfi}{\begin{figure}}
+\newcommand{\efi}{\end{figure}}
+\newcommand{\ca}[2]{\caption{#1 \label{#2}}}
+\newcommand{\ig}[2]{\includegraphics[#1]{#2}}
+\newcommand{\bmp}[1]{\begin{minipage}{#1}}
+\newcommand{\emp}{\end{minipage}}
+\newcommand{\pig}[2]{\bmp{#1}\includegraphics[width=#1]{#2}\emp} % mp-fig, nogap
+\newcommand{\bp}{\begin{proof}}
+\newcommand{\ep}{\end{proof}}
+\newcommand{\ie}{{\it i.e.\ }}
+\newcommand{\eg}{{\it e.g.\ }}
+\newcommand{\etal}{{\it et al.\ }}
+\newcommand{\pd}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\pdc}[3]{\left. \frac{\partial #1}{\partial #2}\right|_{#3}}
+\newcommand{\infint}{\int_{-\infty}^{\infty} \!\!}      % infinite integral
+\newcommand{\tbox}[1]{{\mbox{\tiny #1}}}
+\newcommand{\mbf}[1]{{\mathbf #1}}
+\newcommand{\half}{\mbox{\small $\frac{1}{2}$}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\RR}{\mathbb{R}^2}
+\newcommand{\ve}[4]{\left[\begin{array}{r}#1\\#2\\#3\\#4\end{array}\right]}  % 4-col-vec
+\newcommand{\vt}[2]{\left[\begin{array}{r}#1\\#2\end{array}\right]} % 2-col-vec
+\newcommand{\bigO}{{\mathcal O}}
+\newcommand{\qqquad}{\qquad\qquad}
+\newcommand{\qqqquad}{\qqquad\qqquad}
+\DeclareMathOperator{\Span}{Span}
+\DeclareMathOperator{\im}{Im}
+\DeclareMathOperator{\re}{Re}
+\DeclareMathOperator{\vol}{vol}
+\newtheorem{thm}{Theorem}
+\newtheorem{cnj}[thm]{Conjecture}
+\newtheorem{lem}[thm]{Lemma}
+\newtheorem{cor}[thm]{Corollary}
+\newtheorem{pro}[thm]{Proposition}
+\newtheorem{rmk}[thm]{Remark}
+\newtheorem{dfn}[thm]{Definition}
+% this work...
+\newcommand{\al}{\alpha}
+
+
+\begin{document}
+
+\title{Notes on theory of Hamiltonian Monte Carlo and delayed rejection}
+% asymptotic expansion?
+
+
+\author{Alex H. Barnett}
+\date{\today}
+\maketitle
+
+\begin{abstract}
+  Since the rigorous proof of correctness of HMC is not simply written
+  down anywhere we can find, we summarize it here.
+  Measure theory is needed for mathematical rigor, but we avoid
+  excessively general notation.
+  We also aim to write down our delayed rejection HMC method rigorously.
+  It also serves as a tutorial,
+  and scratch for our paper.
+\end{abstract}
+
+
+
+\section{Basics: measure theory notation, Markov chains, and Metropolis--Hastings}
+
+We consider Markov chains on continuous
+state spaces, using measure theory in order to handle the non-absolutely
+continuous transition kernels of HMC.
+Our notation follows, eg Tierney's papers from the 90s, Geyer's and Kennedy's lecture notes, and Andrieu et al from 2021.
+Also see graduate-level books such as {\em Applied Analysis} by Hunter \& Nachtergaele for basic measure theory.
+
+\subsection{The basics in pdf notation}
+
+We consider a continuous state space $S = \R^n$.
+A state is a point $x\in S$.
+All integrals are over $S$ unless otherwise indicated.
+The goal of MCMC is to sample from a given distribution $\pi$ over $S$.
+This may be taken to be
+{\em absolutely continuous} (AC, with respect to
+Lebesgue measure $dx$), meaning that it is described by a nonnegative
+density {\em function} (pdf) which (without ambiguity) we may also call
+$\pi: S \to \R_{\ge 0}$.
+Thus $\pi(x)$ is defined and finite for every $x\in S$.
+The normalization is $\int \pi(x) dx = 1$.
+A Markov chain is defined by a {\em transition operator} $K$, which
+in the simplest AC case we may also write as a kernel function
+$k(x,y)$ giving the pdf
+of the next state $y$ conditioned on
+the current state $x$, that is, $p(y|x)$.
+The convention in probability is that
+operators act from the left
+(the opposite of that for usual operators in applied math),
+so, such as kernel acts on a density $\pi$ as in integral kernel
+\be
+(\pi K)(y) := \int \pi(x) k(x,y) dx~.
+\label{piK}
+\ee
+A mnemonic for the kernel indices is $k$(initial,final), which is backwards
+from the usual in integral equations.
+By normalization of $k(x,\cdot)$,
+\be
+\int k(x,y) dy = 1~, \qquad \forall x\in S~.
+\label{knorm}
+\ee
+Inserting this into
+$\int (\pi K)(dy) dy = \int\int \pi(x) k(x,y) dx dy$ after swapping
+the order of integration, proves that $\pi K$ is also normalized.
+
+Invariance (stationarity) of a pdf $\pi$ with respect to the kernel $K$
+is then $\pi K = \pi$ as pdfs, ie
+\be
+\int \pi(x) k(x,y) dx = \pi(y)~, \qquad \forall y\in S
+\label{inv}
+\ee
+Detailed balance (DB, also called ``reversibility'') for a kernel
+(or ``chain'')
+is the condition
+\be
+\pi(x) k(x,y) = \pi(y) k(y,x)~, \qquad \forall x,y\in S
+\qquad \mbox{(DB)}
+\label{db}
+\ee
+The proof that DB implies invariance is just by integration
+of \eqref{db} with respect to $dy$, then using \eqref{knorm}.
+
+M-H involves a proposal kernel $q(x,y)$, which we assume is AC for now,
+and is normalized so $\int q(x,y) dy = 1$, for all $x\in S$.
+Starting at $x$, the M-H step is: draw $y$ from $q(x,y)$ then
+accept with probability $\al(x,y)$ in which case the new $x$ is $y$,
+otherwise the new $x$ is $x$. We could introduce chain notation
+$x_t$, $t=0,1,\dots$ but little would be gained at this point.
+The M-H acceptance formula is
+\be
+\al(x,y) = \min\left(\frac{\pi(y) q(y,x)}{\pi(x) q(x,y)}, 1 \right)
+~, \qquad x,y\in S
+\label{al}
+\ee
+which obeys
+\be
+\frac{\al(x,y)}{\al(y,x)} = \frac{\pi(y) q(y,x)}{\pi(x) q(x,y)}
+~, \qquad x,y\in S
+\label{alrat}
+\ee
+It is easy to show that \eqref{alrat} implies \eqref{db} for the
+case of $y\neq x$, since in that case $k(x,y) = p(y|x) = q(x,y)\al(x,y)$,
+and substituting into \eqref{db} and using \eqref{alrat} shows
+\eqref{db} holds for $y\neq x$.
+However, we have not proved DB, since what is the meaning of $k(x,x)$,
+which is infinite?
+What is the meaning of the pointwise equality \eqref{db} for $y=x$ ?
+This motivates using measures (distributions), which generalize density functions, as in the next section.
+
+However, one does not need measures to prove that M-H is merely
+$\pi$ invariant.
+\begin{pro}
+  Let $q(x,.)$ be an AC proposal density, then M-H with acceptance probability
+  \eqref{al} has $\pi$ an invariant density.
+  \label{p:mhinv}
+\end{pro}
+\begin{proof}
+  At the current state $x$, the probability of rejection
+  (called $s$ in Andrieu) is
+  \be
+  r(x) = \int q(x,z) [1-\al(x,z)] dz  = 1 - \int q(x,z) \al(x,z) dz~;
+  \label{rej}
+  \ee
+  here $z$ is a dummy variable.
+  The action of an M-H step on $\pi$ is a mixture of an $\al$-weighted proposal
+  and the rejection (no change, $y=x$),
+  resulting in the final density as a function of final state $y$,
+  \bea
+  \int \pi(x) q(x,y)\al(x,y) dx + \pi(y) r(y) &=&
+  \int \pi(x) q(x,y)\al(x,y) dx + \pi(y) - \pi(y) \cdot \int q(y,z) \al(y,z) dz
+  \\ \nonumber
+  &=&\int \pi(x) q(x,y)\al(x,y) dx + \pi(y) - \int \pi(y) q(y,z) \al(y,z) dz
+  \\ \nonumber
+  &=&\int \pi(x) q(x,y)\al(x,y) dx + \pi(y) - \int \pi(z) q(z,y) \al(z,y) dz
+  \\ \nonumber
+  &=& \pi(y)
+\eea
+where in the first line we inserted \eqref{rej},
+in the second we moved $\pi(y)$ inside the integral, in the
+third we used the ratio \eqref{alrat}, finally canceling the integrals.
+Comparing \eqref{inv} completes the proof.
+\end{proof}
+
+Note that any form of $\al(x,y)$ that satisfies \eqref{alrat} is valid
+in the above; however, \eqref{al} is the choice that is most efficient
+in the sense that any other has higher overall probability of rejection.
+
+
+\subsection{Distributions and measure theory notation}
+
+M-H, and in particular HMC,
+involves transition kernels for which $k(x,\cdot)$
+is not AC.
+One extension of the function notation that can handle
+this is to use $\delta$, the Dirac delta distribution, or unit point mass, defined by
+$$
+\delta(x) = 0, \quad x\neq 0, \qquad \int \delta(x) dx = 1~.
+$$
+For any continuous function $f:S \to \R$, we have the sifting property
+$\int f(x) \delta(x) dx = f(0)$.
+The transformation rules are, in 1D ($n=1$),
+\bea
+\delta(ax) &=& |a|^{-1} \delta(x)~, \qquad a \in \R, \; a\neq 0~,
+\\
+\delta(F(x)) &=& \sum_{z: f(z) = 0} |F'(z)|^{-1} \delta(x-z)~,
+\qquad F\in C^1(\R)~.
+\eea
+which generalizes to higher dimensions ($n\ge 1$), where $F:S\to S$,
+\be
+\delta(F(x)) = \sum_{z: F(z) = 0} |\det DF(z)|^{-1} \delta(x-z)~,
+\ee
+where $DF$ is the $n\times n$ Jacobean derivative matrix of $F$.
+The notation $\delta_x(y)$ means $\delta(x-y)$ which also equals $\delta_y(x)$.
+
+For example, in the above case of M-H with an AC proposal density
+$q(x,y)$, the kernel for the M-H step
+is a mixture of an AC pdf and a (rejected) point mass at $y=x$,
+\be
+k(x,y) = q(x,y)\al(x,y) + \delta_x(y) r(x)~,
+\label{mhker}
+\ee
+which one may check obeys $\int k(x,y) dy=1$ for all $x$,
+recalling \eqref{rej}.
+See Tierney '98, Kennedy Sec.~8.2.
+
+One must generalize the notation to measures rather than
+functions.
+To recap this,
+measures are defined over $(S,\cal S)$, where $\cal S$ is a
+``$\sigma$-field over $S$''.
+Loosely speaking, $\cal S$ is the set of all measurable
+subsets of $S$ (see any textbook on measure theory).
+A measure $\pi$ on $(S,\cal S)$ is defined by
+$\pi(B)$, i.e., probability of being in $B$,
+for all (measurable) sets $B\subset S$ (strictly, $B\in \cal S$).
+The normalization is $\pi(S) = 1$.
+Only when a measure $\pi$ is AC
+can we write it as pdf $\pi(x)$
+(overloading notation somewhat),
+in which case for any $B\in\cal S$,
+$$
+\pi(B) = \int_B \pi(x) dx~.
+$$
+Here $\pi(x) dx$ may be thought of as a measure.
+Equivalent notations (see Kennedy notes p.~89) include in the measure case
+$$
+\pi(B) = \int_B d\pi = \int_B d\pi(x) = \int_B \pi(dx) ~.
+$$
+Two measures $\pi$ and $\mu$ are equal if
+$$
+\pi(B) = \mu(B) \qquad \forall B\in\cal S~;
+$$
+note that this is a {\em weak} definition of equality.
+This is sometimes summarized by $\pi(dx) = \mu(dx)$, which treats them
+as distributions over an independent variable $x$.
+Lebesgue measure $dx$ is a special case of a measure with density function 1.
+
+A transition (Markov) kernel $K(x,\cdot)$ can be considered a measure
+that depends on the parameter $x\in S$, namely the initial point.
+Then $K(x,B) = p(y\in B | x)$ is the conditional probability of ending in
+$B$ after one step, when starting in at $x$.
+The action of a kernel $K$ on a measure $\pi$ is
+(compare \eqref{piK}),
+for any ``test'' set $B \in \cal S$,
+$$
+(\pi K)(B) = \int_S \pi(dx) K(x,B)~.
+$$
+The measure version of \eqref{inv} is as follows.
+\begin{dfn}[Invariance for measures]
+  A measure $\pi$ is invariant under the Markov kernel $K$ if
+  $\pi K = \pi$, as measures, that is
+  \be
+  \int_B \pi(dx) K(x,B) = \pi(B) ~.
+  \ee
+  \label{d:invm}
+\end{dfn}
+The direct proof of M-H invariance for \eqref{mhker} (Prop.~\ref{p:mhinv})
+in this sense of invariance is
+done in, eg, Tierney '94 Sec.~2.3.1 and notes by Geyer, Kennedy.
+They all avoid proving DB.
+
+The measure-theory (weak) sense of \eqref{db}
+states: the probability of being in set $A$ then going to
+set $B$ is the same as the other way around, as follows.
+\begin{dfn}[Detailed balance for measures]
+  A kernel $K$ has detailed balance (reversible) with respect to
+  a measure $\pi$ if
+  \be
+  \int_A \pi(dx) K(x,B) = \int_B \pi(dx) K(x,A) \qquad \forall A,B \in \cal S~.
+  \ee
+  \label{d:dbm}
+\end{dfn}
+A more abstract way to write this is $\pi(dx) K(x,dy) = \pi(dy) K(y,dx)$ as measures
+on $\cal S \times \cal S$.
+Tierney '98 and Andrieu prove that M-H with acceptance \eqref{al}
+obeys DB in the above sense.
+% I don't get the analysis in Tierney '98.
+A less abstract way to write it is via distributions,
+$$
+\int_B \int_A \pi(x) k(x,y) dy dx =
+\int_B \int_A \pi(y) k(y,x) dx dy~.
+$$
+
+% components can be point masses and AC pdfs, but also intermediate
+% dim objects like delta(x_1).k(x_2). Needed for HMC p-random composed w/ flow.
+% give egs?
+
+
+
+\section{M-H with deterministic involutions}
+
+We need to define a transition kernel generated by a deterministic smooth map
+$F: S\to S$.
+This is simply a unit point mass at the image of $x$ under $F$, ie
+$$
+k_F(x,y) = \delta_{F(x)}(y) = \delta(y - F(x))~.
+$$
+The 
+
+Let $F$ be an involution,
+  that is $F^2=I$ where $I$ is the identity.
+
+Andrieu, building on Tierney '98 p.4, emphasizes involutions.
+
+
+\begin{lem}
+
+
+\end{lem}
+
+\section{Hamiltonian Monte Carlo}
+
+Here we show why HMC has the correct invariant pdf.
+
+
+The goal is to sample from an assumed AC pdf $\pi(q)$ over a $d$-dimensional
+Euclidean state space $q\in \R^d$.
+The MCMC state space is augmented to $x = (q,p)$ where $q\in R^d$ is now interpreted
+as position and $p\in\R^d$ as momentum.
+In the simplest case the Hamiltonian is
+$$
+H(q,p) = V(q) + \frac{1}{2}\|p\|^2
+$$.
+
+
+
+HMC composes two steps, the first 
+
+is a variant of M-H MCMC but without an AC proposal density.
+
+
+
+
+
+
+
+% BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB
+\bibliographystyle{abbrv}
+\bibliography{localrefs}
+\end{document}
+
