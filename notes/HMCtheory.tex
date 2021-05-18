@@ -64,7 +64,7 @@
 \newtheorem{dfn}[thm]{Definition}
 % this work...
 \newcommand{\al}{\alpha}
-
+\newcommand{\eps}{\varepsilon}
 
 \begin{document}
 
@@ -90,7 +90,7 @@
 
 
 
-\section{Basics: Markov chains and Metropolis--Hastings in general}
+\section{Basics: Markov chains and Metropolis--Hastings}
 
 We consider Markov chains on continuous
 state spaces, using measure theory in order to handle the non-absolutely
@@ -99,19 +99,22 @@ Our notation follows, eg Tierney's papers from the 90s, Geyer's and Kennedy's le
 We avoid the very abstract framework of Andrieu et al 2021.
 Also see graduate-level books such as {\em Applied Analysis} by Hunter \& Nachtergaele for basic measure theory.
 
+% bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 \subsection{The basics in pdf notation}
 
 We consider a continuous state space $S = \R^n$.
 A state is a point $x\in S$.
-All integrals are over $S$ unless otherwise indicated.
 The goal of MCMC is to sample from a given distribution $\pi$ over $S$.
 In our applications $\pi$ may be taken to be
 {\em absolutely continuous} (AC, with respect to
 Lebesgue measure $dx$), meaning that it is described by a nonnegative
 density {\em function} (pdf) which without ambiguity we may also call
 $\pi: S \to \R_{\ge 0}$.
-Thus $\pi(x)$ is a nonnegative number for every $x\in S$.
-The normalization is $\int \pi(x) dx = 1$.
+%Thus $\pi(x)$ is a nonnegative number for every $x\in S$.
+The normalization is $\int \pi(x) dx = 1$, although all MCMC methods
+discussed can handle unnormalized $\pi$.
+All integrals are over $S$ unless otherwise indicated.
+
 A Markov chain is defined by a {\em transition operator} $K$, which
 in the simplest AC case we may also write as a kernel function
 $k(x,y)$ giving the pdf
@@ -120,21 +123,23 @@ the current state $x$, that is, $p(y|x)$.
 The convention in probability is that
 operators act from the left
 (the opposite of that for usual operators in applied math),
-so, such as kernel acts on a density $\pi$ as in integral kernel
+so, such as kernel acts on a density $\pi$ as an integral operator
 \be
 (\pi K)(y) := \int \pi(x) k(x,y) dx~.
 \label{piK}
 \ee
 A mnemonic for the kernel indices is $k$(initial,final), which is backwards
 from the usual in integral equations.
-By normalization of $k(x,\cdot)$,
+$k(x,\cdot)$ is normalized (the Markov property), ie,
 \be
 \int k(x,y) dy = 1~, \qquad \forall x\in S~.
 \label{knorm}
 \ee
-Inserting this into
-$\int (\pi K)(dy) dy = \int\int \pi(x) k(x,y) dx dy$ after swapping
-the order of integration, proves that $\pi K$ is also normalized.
+Then $\pi K$ is also normalized:
+$\int (\pi K)(y) dy = \int\int \pi(x) k(x,y) dx dy = \int \pi(x) [ \int k(x,y) dy] dx = \int \pi(x) dx$,
+where swapping the order of integration
+is justified by Fubini's theorem because $\pi(x)k(x,y)$ is integrable
+over $dx dy$.
 
 Invariance (stationarity) of a pdf $\pi$ with respect to the kernel $K$
 is then $\pi K = \pi$ as pdfs, ie
@@ -153,26 +158,26 @@ is the condition
 The proof that DB implies invariance is just by integration
 of \eqref{db} with respect to $dy$, then using \eqref{knorm}.
 
-M-H involves a proposal kernel $q(x,y)$, which we assume is AC for now,
-and is normalized so $\int q(x,y) dy = 1$, for all $x\in S$.
+M-H involves a {\em proposal} kernel $q(x,y)$, which we assume is AC for now,
+and is also normalized so $\int q(x,y) dy = 1$ for all $x\in S$.
 Starting at $x$, the M-H step is: draw $y$ from $q(x,y)$ then
 accept with probability $\al(x,y)$ in which case the new $x$ is $y$,
 otherwise the new $x$ is $x$. We could introduce chain notation
 $x_t$, $t=0,1,\dots$ but little would be gained at this point.
-The M-H acceptance formula is
+The standard M-H acceptance formula is
 \be
 \al(x,y) = \min\left(\frac{\pi(y) q(y,x)}{\pi(x) q(x,y)}, 1 \right)
-~, \qquad x,y\in S
+~, \qquad x,y\in S~,
 \label{al}
 \ee
 which obeys
 \be
 \pi(x) q(x,y) \al(x,y) = \pi(y) q(y,x) \al(y,x)
-~, \qquad x,y\in S
+~, \qquad x,y\in S~.
 \label{alrat}
 \ee
 Note that \eqref{alrat} is more general than \eqref{al} since it allows
-for vanishing of $q(x,y)$ for certain $(x,y)$.
+for $q=0$ for some $(x,y)$.
 It is easy to show that \eqref{alrat} implies \eqref{db} for the
 case of $y\neq x$, since in that case $k(x,y) = p(y|x) = q(x,y)\al(x,y)$,
 and substituting into \eqref{db} and using \eqref{alrat} shows
@@ -180,6 +185,7 @@ and substituting into \eqref{db} and using \eqref{alrat} shows
 However, we have not proved DB, since what is the meaning of $k(x,x)$,
 which is infinite?
 What is the meaning of the pointwise equality \eqref{db} for $y=x$ ?
+These issues do not arise in the discrete state space $S$ case, only the continous one.
 This motivates definitions using measures (distributions), a generalization of density functions, as in the next section.
 
 However, as a warm-up, one does not need measures to prove that M-H is merely
@@ -224,6 +230,7 @@ allowed value for a probability.
 \end{rmk}
 
 
+% ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
 \subsection{Distributions and measure theory notation}
 
 M-H, and in particular HMC,
@@ -234,21 +241,30 @@ this is to use $\delta$, the Dirac delta distribution, or unit point mass, defin
 $$
 \delta(x) = 0, \quad x\neq 0, \qquad \int \delta(x) dx = 1~.
 $$
-For any continuous function $f:S \to \R$, we have the sifting property
+For any function $f$ continuous at $0$, we have the sifting property
 $\int f(x) \delta(x) dx = f(0)$.
-The transformation rules are, in 1D ($n=1$),
+The transformation rules are, in 1D ($n=1$), with $f:\R \to \R$ a
+differentiable function,
 \bea
 \delta(ax) &=& |a|^{-1} \delta(x)~, \qquad a \in \R, \; a\neq 0~,
 \\
-\delta(F(x)) &=& \sum_{z: f(z) = 0} |F'(z)|^{-1} \delta(x-z)~,
-\qquad F\in C^1(\R)~.
+\delta(f(x)) &=& \sum_{z: f(z) = 0} |f'(z)|^{-1} \delta(x-z)~.
 \eea
-which generalizes to higher dimensions ($n\ge 1$), where $F:S\to S$,
+Of course the latter is inapplicable when the RHS is not defined.
+In general dimension ($n\ge 1$), where $F:S\to S$ is a differentiable map,
 \be
 \delta(F(x)) = \sum_{z: F(z) = 0} |\det DF(z)|^{-1} \delta(x-z)~,
 \ee
-where $DF$ is the $n\times n$ Jacobean derivative matrix of $F$.
-The notation $\delta_x(y)$ means $\delta(x-y)$ which also equals $\delta_y(x)$.
+where $DF$ is the $n\times n$ Jacobean derivative matrix $\partial_{x_j} F_i$,
+and $0$ is the origin in $\R^n$.
+By replacing $F(x)$ by $F(x)-b$, for some constant translation $b\in \R^n$,
+\be
+\delta(F(x)-b) = \sum_{z: F(z) = b} |\det DF(z)|^{-1} \delta(x-z)~.
+\label{deltarule}
+\ee
+Here $z$ sums over the preimages of $b$.
+Subscript notation is also used:
+$\delta_x(y) = \delta(x-y) = \delta(y-x) = \delta_y(x)$.
 
 For example, in the above case of M-H with an AC proposal density
 $q(x,y)$, the kernel for the M-H step
@@ -356,6 +372,7 @@ using $k(x,y)dy$ to represent the measure $K(x,dy)$.
 \end{proof}
 
 
+% QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ
 \subsection{M-H with proposals that are measures}
 
 Tierney '98 and Andrieu prove that M-H with acceptance a generalization of
@@ -386,8 +403,10 @@ measures on $\cal S \otimes \cal S$,
 \ee
 in other words that the left hand side measure of \eqref{alratmi} is symmetric
 with respect to $x\leftrightarrow y$.
-%with respect to variables $(x,y)$.
-% is this too loose to use?
+\footnote{Andrieu states this way more abstractly as: the ratio $\al(y,x)/\al(x,y)$
+is the Radon--Nikodym derivative of $\pi(dx) Q(x,dy)$ and its
+$x\leftrightarrow y$ transpose.}
+
 
 The rejection probability is, for each $x\in S$,
 \be
@@ -406,9 +425,10 @@ K(x,B) = \int_B Q(x,dy) \al(x,y) + r(x) 1_{x\in B}~, \qquad \forall B \in \cal S
 \label{mhkerB}
 \ee
 
-\begin{lem}
+\begin{lem}[M-H for proposals that are measures]
   For any acceptance probability function $\al(x,y)$ obeying \eqref{alratm},
-  M-H has detailed balance with respect to the measure $\pi$.
+  M-H with a proposal measure $Q(x,\cdot)$ has detailed balance with respect to the measure $\pi$.
+  \label{l:mh}
 \end{lem}
 \begin{proof}
   Let $A,B\in \cal S$.
@@ -429,9 +449,11 @@ K(x,B) = \int_B Q(x,dy) \al(x,y) + r(x) 1_{x\in B}~, \qquad \forall B \in \cal S
 \end{proof}
 
 Combining with Prop.~\ref{p:dbim} shows that for general proposal measures,
-M-H with \eqref{alratm} has the correct $\pi$-invariance.
+M-H with $\al$ condition \eqref{alratm} has the correct $\pi$-invariance.
 
 
+
+% FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 \section{M-H with a deterministic proposal from a map}
 % Q symm needed?
 
@@ -448,10 +470,11 @@ $$
 Q_F(x,dy) = \delta_{F(x)}(dy) = \delta(y - F(x)) dy ~.
 $$
 \begin{rmk} Acting this proposal directly as a Markov kernel (ie, always accepting) onto a measure $\pi$ gives $\pi Q_F$, the so-called ``pushforward'',
+  defined by
 $$
-(\pi Q_F)(B) = \int \pi(dx) Q_F(x,B) = \pi(F^{-1}(B))
+(\pi Q_F)(B) = \int \pi(dx) Q_F(x,B) = \pi(F^{-1}(B)) \qquad \forall B \in \cal S~,
 $$
-often denoted by $F_\ast \pi$, or by $\pi^F$ (Andrieu).
+and often denoted by $F_\ast \pi$, or by $\pi^F$ (Andrieu).
 \end{rmk}
 
 \begin{dfn}[Involution]
@@ -461,60 +484,221 @@ often denoted by $F_\ast \pi$, or by $\pi^F$ (Andrieu).
 Andrieu, building on Tierney '98 p.4, emphasizes involutions,
 although this is confused for this reader with the $x\leftrightarrow y$ flip
 (see Andrieu eq.~(4)).
+%Sohl--Dickstein uses them 
 
 \begin{dfn}[Liouville]
-  A map $F:S\to S$ is volume-preserving if it has unit Jacobean
-  $|\det DF(x)| = 1$ for all $x\in S$.
+  A map $F:S\to S$ is volume-preserving if it preserves Lebesgue measure,
+  that is,
+  $$
+  \int_B dx = \int_{F(B)} dx \qquad \forall B \subset S~,
+  $$
+  where $F(B):=\{F(x): \, x\in B\}$ is the image of the set $B$.
 \end{dfn}
+Volume preservation is equivalent to $F$ having everywhere unit Jacobean,
+$|\det DF(x)| = 1$ for all $x\in S$.
+% need reference
 
-\begin{lem}
-  Consider $\pi$ an AC target density.
+\begin{lem}[M-H using a deterministic volume-preserving involution]
+  Let $\pi$ be an AC target density.
   Let $F$ be a volume-preserving involution.
-  Then M-H with the proposal measure $Q_F$ and acceptance
-  probability obeying
+  Then M-H with the proposal measure $Q_F$, and acceptance
+  probability $\al$ obeying
   \be
-  \pi(x) \al(x,y) = \pi(y) \al(y,x)   \qquad \forall x,y, \in S
+  \pi(x) \al(x,y) = \pi(y) \al(y,x)   \qquad \forall x,y \in S
   \label{alrats}
   \ee
-  has $\pi$ as an invariant measure.
+  has DB with respect to $\pi$, and $\pi$ as an invariant measure.
+  \label{l:mhmap}
 \end{lem}
 \begin{proof}
-
-
+  The conditions on $F$ render $Q_F$ symmetric (with respect to Lebesgue)
+  as a measure on $\cal S \otimes \cal S$:
+  $$
+  dx Q_F(x,dy) = \delta(F(x)-y) dxdy =
+  |\det DF(F^{-1}(y))|^{-1} \delta(x - F^{-1}(y)) dxdy =
+  \delta(x-F(y)) dxdy =
+  dy Q_F(y,dx)~.
+  $$
+  Here, the 2nd step used the transformation rule \eqref{deltarule}, there being
+  only one term in the sum because $F$ is bijective, and
+  the next step uses the involution and unit Jacobean.
+  Combining this and \eqref{alrats} shows that \eqref{alratm} holds,
+  so that DB holds by Lemma~\ref{l:mh}.
+  Then invariance follows by Prop.~\ref{p:dbim}.
 \end{proof}
 
+There is probably an integral change of variable version of this proof too,
+which might be even simpler.
+In any case, this formalizes verbal arguments such as those of Neal '11 using infinitesimal
+volumes.
 
 
+% HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
 \section{Hamiltonian Monte Carlo}
 
 Here we use the above tools to prove that HMC has the correct invariant pdf.
 
 The goal is to sample from a pdf $\pi(q)$ over a $d$-dimensional
-Euclidean state space $q\in \R^d$. ($\pi$ is assumes AC as a measure.)
-The MCMC state space is augmented to $x = (q,p)$ where $q\in R^d$ is now interpreted
-as position and $p\in\R^d$ as momentum.
-In the simplest case the Hamiltonian is
+Euclidean state space $q\in \R^d$. ($\pi$ is assumed AC.)
+The MCMC state space is augmented to $x = (q,p)$ where $q\in \R^d$ is now interpreted as position and $p\in\R^d$ as momentum. Thus $S = \R^{2d}$, which
+is called phase space.
+In the simplest (scalar mass) case the Hamiltonian $H:S \to \R$ is
 $$
-H(q,p) = V(q) + \frac{1}{2}\|p\|^2
+H(x) = H(q,p) = U(q) + \frac{1}{2}\|p\|^2
 $$
-where $V(q) = -\log \pi(q)$, that is, $\pi(q) = e^{-V(q)}$.
-This assumes $\pi$ is strictly positive.
+where the potential is constructed as $U(q) = -\log \pi(q)$, that is, $\pi(q) = e^{-U(q)}$,
+and $\|.\|$ is the 2-norm in $\R^d$.
+This assumes $\pi$ is everywhere positive.
+Since $H$ is the sum of terms in $q$ and terms in $p$,
+Gibbs (aka Boltzmann) measure $\gamma$, defined as follows, is separable:
+\be
+\gamma(x) := Z^{-1} e^{-H(x)} = Z^{-1} e^{-U(q)} e^{-\|p\|^2/2} = Z^{-1} \pi(q) e^{-\|p\|^2/2}~,
+\label{Gibbs}
+\ee
+where $Z>0$ is some normalizing constant.
+Thus the $q$-marginal of $\gamma$ is the desired $\pi$.
+The goal is to show that the steps in HMC are $\gamma$-invariant.
 
-*** define leapfrog.
+Hamiltonian flow with respect to a continuous time variable $t$ is then
+(where dot means $\partial_t$)
+\be
+\left\{\begin{array}{lllll}\dot q &=& \nabla_p H(q(t),p(t)) &=& p(t) \\
+\dot p &=& -\nabla_q H(q(t),p(t)) &=& -\nabla U(q(t))
+\end{array}\right.
+\label{flow}
+\ee
+Since HMC does not use this flow, we skip any proofs about it for now
+(it is $H$-preserving, volume-preserving, symplectic, time-reversible, etc).
 
-prove vol-pres.
+\begin{dfn}[Shear]
+  Any map on $\R^{2d}$ of the form
+  $(q,p) \mapsto (q + G(p),p)$, or
+  $(q,p) \mapsto (q, p +G(q))$,
+  where $G:\R^d\to \R^d$ is some differentiable map, is called a {\em shear}.
+\end{dfn}
+\begin{pro}
+  Any shear is volume-preserving.
+  \label{p:shear}
+\end{pro}
+\begin{proof}
+  Let $F$ be a shear.
+  Computing its Jacobean with $d\times d$ blocks,
+  $DF = \left[\begin{smallmatrix}I_d&DG\\0 &I_d \end{smallmatrix}\right]$, or
+    $DF = \left[\begin{smallmatrix}I_d &0\\DG &I_d \end{smallmatrix}\right]$.
+  In either case $\det DF \equiv 1$.
+\end{proof}
 
-time-reversible means if compose with $p$-flip, $F$ becomes involution.
 
-HMC composes two steps:
-ii) Gibbs sample (randomize) $p$.
-i) M-H using map $F$ as some leapfrogs followed by $p$-flip.
+Fixing a timestep $\eps>0$, the leapfrog (Verlet) map $L$,
+acting on an ``initial'' state $x_k:=(q_k,p_k)$,
+to give a ``final'' state $(q_{k+1},p_{k+1}) = L(q_k,p_k)$,
+comprises three sequential steps:
+\ben
+\item $p'     \;\leftarrow\; p_k - \frac{\eps}{2} \nabla U(q_k)$
+\item $q_{k+1} \;\leftarrow\; q_k + \eps p'$
+\item $p_{k+1} \;\leftarrow\; p' - \frac{\eps}{2} \nabla U(q_{k+1})$
+\een
+Let $P$ be the momentum-flip operator
+$$
+P(q,p) := (q,-p)~.
+$$
+\begin{lem}
+  Let $n\in\{0,1,\dots\}$.
+  The map $L^n P$ is a volume-preserving involution.
+  (Here, as above, we compose operators to the right, so this
+  means $L^n$ followed by $P$, although it happens not to
+  matter here.)
+  \label{l:LnP}
+\end{lem}
+\begin{proof}
+  $L$ is the composition of three steps each of which is a shear, and thus
+  volume-preserving by Prop.~\ref{p:shear}. $P$ is obviously volume-preserving.
+  Thus $L^nP$ is volume-preserving.
+  $L$ is time-reversible in the sense that, if $L(q_k,p_k)=(q_{k+1},p_{k+1})$,
+  one may verify $L(q_{k+1},-p_{k+1})=(q_k,-p_k)$ by
+  checking the three steps in reverse order ($p'$ is negated relative
+  to its forward value).
+  The same is true for $L^n$, by so reversing each leapfrog.
+  Stating this algebraically, $PL^n P = L^{-n}$. Using $P=P^{-1}$ and
+  rearranging, $(L^nP)^2 = I$, so $L^n P$ is an involution.
+\end{proof}
 
-thm HMC has $\pi$ invariant.
+\begin{rmk}
+  $L^n$ happens to be
+  an $\bigO(\eps^2)$-accurate approximation to integrating the
+  flow \eqref{flow} to time $t = n\eps$,
+  although this plays no role in the correctness of HMC.
+  There exist other step schemes that are also volume-preserving involutions,
+  for instance ``modified FE'' in Neal '11 (but not plain FE = forward Euler),
+  which is $\bigO(\eps)$-accurate.
+\end{rmk}
+
+Vanilla HMC has algorithm parameters $\eps>0$ the timestep, and $n$ a number of leapfrog steps per trajectory.
+A single ``trajectory'' composes two steps in sequence:
+\ben
+\item Gibbs-sample (randomize) $p$ in a way that leaves the
+  Gaussian marginal $e^{-\|p\|^2/2}$ invariant (without affecting $q$).
+\item Perform one M-H MCMC step to the state $(q,p)$
+  using the deterministic proposal $Q_F$, for the map $F = L^n P$,
+  with acceptance probability $\al$ obeying \eqref{alrats}.
+  This either changes $(q,p)$, or rejects leaving it unchanged.
+\een
+This {\em pair} of steps may then be repeated to generate a Markov chain.
+Note that this is not a Markov chain generated by any
+M-H rule: the Markov operator for the chain is a Gibbs move plus a M-H update.
+
+\begin{thm}[Invariant pdf of HMC]
+  Let $\pi$ be a continuous positive pdf.
+  The Markov operator defined by one trajectory of vanilla HMC as
+  described above has $\gamma$,
+  defined by \eqref{Gibbs}, as an invariant pdf.
+  \label{t:hmc}
+\end{thm}
+\begin{proof}
+  It is sufficient to show that each step in the pair is $\gamma$-invariant.
+  This holds for step 1 (a Gibbs update) since it preserves the conditional
+  over $p$, which is identical at each fixed $q$, while leaving $q$ unaffected.
+  It holds for step 2 (one deterministic M-H step) since by
+  Lemma~\ref{l:LnP}, $F=L^n P$
+  is a volume-preserving involution, so one can apply Lemma~\ref{l:mhmap}.
+\end{proof}
+
+We have not discussed uniqueness, or mixing rates, at all.
+However, assuming that the Markov chain {\em converges} to the
+unique invariant pdf $\gamma$,
+the fact that marginalizing \eqref{Gibbs} over $p$ leaves $\pi(q)$
+immediately give the following.
+
+\begin{cor}
+  Assuming a converged chain,
+  vanilla HMC generates a sequence of $q$ values drawn from $\pi$.
+\end{cor}
+Note that if the Gibbs move (step 1) does not fully randomize $p$,
+then one cannot write vanilla HMC as {\em any} Markov chain in $q$ alone:
+$p$ has a memory that destroys the Markov property in $q$.
 
 
 
+\begin{rmk}
+  The point of the Gibbs moves alternating with the M-H moves
+  is to increase mixing with respect to
+  the value of $H$. A chain of M-H moves alone, while
+  also $\gamma$-invariant would approximately
+  (to accuracy $\bigO(\eps^2)$) conserve $H$, because \eqref{flow} conserves
+  $H$ exactly.
+\end{rmk}
 
+Questions:
+\ben
+\item What goes wrong in the proof of $Q$ a symmetric product measure
+  if $F=L^n$ which is not an involution?
+\item Understand Campos \& Sanz-Serna.
+\een
+  
+
+
+
+% DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD
 \section{Delayed rejection}
 
 *** To do
