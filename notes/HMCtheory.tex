@@ -822,7 +822,7 @@ The first proposal is $q_1(x,y) = \delta(y-F_1(x))$,
 and the 2nd $q_2(x,s,y) = \delta(y-F_2(x))$ which in our case is independent of
 the rejected proposed $s$.
 For us $F_1 = L_\eps^n P$ for some stepsize $\eps$, then
-$F_2 = L_{\eps/a}^n P$ for some stepsize $a>1$ times smaller;
+$F_2 = L_{\eps/a}^{an} P$ for some stepsize $a\in\{2,3,\dots\}$ times smaller;
 however, all we need to know is that they are both volume-preserving
 involutions.
 Then by Lemma~\ref{l:mhmap} we already know
@@ -839,7 +839,7 @@ $F_1(y)=s$; thus (since $F_1$ is injective) it could only hold for $x=y$.
 
 Thus Mira's mechanism fails, and one must instead impose symmetry
 {\em after} integrating over $ds$. Writing symmetry for the non-rejected
-part of the integral from \eqref{dr} gives the more general condition
+part of the integral from \eqref{dr} gives the looser condition
 $$
 \pi(x) \int q_1(x,s) [1-\al_1(x,s)]q_2(x,s,y)\al_2(x,s,y) ds =
 \pi(y) \int q_1(y,s) [1-\al_1(y,s)]q_2(y,s,x)\al_2(y,s,x) ds
@@ -863,11 +863,13 @@ Thus for $y=F_2(x)$ we get the rule, simplifying using $\al_1$,
 \al_2(x,F_1(x),F_2(x)) &=& \min\left[ \frac{\pi(F_2(x)) [1-\al_1(F_2(x),F_1(F_2(x)))]}
   {\pi(x) [1-\al_1(x,F_1(x))]} , 1 \right]
 \nonumber \\
-&=& \min\left\{ \frac{\max[\pi(F_2(x)) - \pi(F_1(F_2(x)))]}{\pi(x) - \pi(F_1(x))}, 1\right\}~.
+&=& \min\left\{ \frac{\max[\pi(F_2(x)) - \pi(F_1(F_2(x))),0]}{\pi(x) - \pi(F_1(x))}, 1\right\}~.
 \label{al2hmc}
-  \eea
+\eea
+Here the max in denominator was removed because it is always positive
+if the 1st proposal is not accepted.
 The middle argument of $\al_2$, being deterministically given by the first argument, is slightly redundant.
-The rule involves four densities to check: $x$, $F_1(x)$, $F_2(x)$, and $F_1(F_2(x))$ a new ghost (pre)image of the 2nd proposal.
+The rule involves four densities to check, at locations: $x$, $F_1(x)$, $F_2(x)$, and $F_1(F_2(x))$ a new ghost (pre)image of the 2nd proposal.
 
 
 
