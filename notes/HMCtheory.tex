@@ -757,28 +757,117 @@ Questions:
   
 
 
+
+
+% DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD
+\section{Delayed rejection}
+
 \bfi  % fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
 \centering\ig{width=5in}{Mira.eps}
 \ca{Delayed rejection, simplest case, for general proposals, taking
 $x$ to $y$.}{f:mira}
 \efi
 
-
-% DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD
-\section{Delayed rejection}
-
 The best source on this is Mira's thesis from 1998, Sec.~5.2.
-We rename some symbols for convenience.
 We use the distribution notation from the end of
 Sec.~\ref{s:mhmeas}, keeping in mind that it summarizes
 weak statements involving equality of integrals for all measurable subsets.
 Starting at $x\in S$ we allow a second proposal $q_2(x,s,y)$ to $y$ if
 the first one $q_1(x,s)$ is rejected.
+The proposals $q_1$ and $q_2$ are designed to mix efficiently, then
+the acceptances $\al_1$ and $\al_2$ are derived from them to have DB.
 Fig.~\ref{f:mira} shows the idea.
 
+The transition kernel analogous to \eqref{mhker} for delayed rejection is,
+marginalizing over all possible rejected first tries $s$,
+\be
+k(x,y) = q_1(x,y)\al_1(x,y) +
+\int q_1(x,s) [1-\al_1(x,s)][q_2(x,s,y)\al_2(x,s,y) + r_2(x,s)\delta_x(y)] ds
+\label{dr}
+\ee
+where $r_2$ is the probability of rejection of the 2nd proposal;
+it's form will be irrelevant because as a measure it lies on the
+diagonal $x=y$.
+Note we use slightly different symbols than Mira.
+Say $\al_1$ satisfies the usual M-H acceptance condition
+\eqref{alrat}.
+The goal is to choose $\al_2(x,s,y)$ to achieve DB \eqref{db}, ie
+$\pi(x)k(x,y)$ is $x\leftrightarrow y$ symmetric, distributionally.
+Mira's mechanism to guarantee this is to make the integrand
+in \eqref{dr} $x\leftrightarrow y$ symmetric once multiplied by $\pi(x)$.
+This symmetry obviously is then maintained by integrating $ds$.
+The first (plain M-H acceptance) term $\pi(x)q_1(x,y)\al_1(x,y)$ is
+already symmetric so can be ignored,
+and we can also ignore the (always symmetric) rejected point mass.
+This leaves symmetry of the integrands
+\be
+\pi(x) q_1(x,s) [1-\al_1(x,s)]q_2(x,s,y)\al_2(x,s,y) =
+\pi(y) q_1(y,s) [1-\al_1(y,s)]q_2(y,s,x)\al_2(y,s,x)~, \forall s\in S
+\label{al2rat}
+\ee
+One may choose the Metropolis form obeying this with the least rejection,
+$$
+\al_2(x,s,y) = \min\left[ \frac{\pi(y) q_1(y,s) [1-\al_1(y,s)]q_2(y,s,x)}
+  {\pi(x) q_1(x,s) [1-\al_1(x,s)]q_2(x,s,y)}
+,1 \right]~,
+$$
+being the simplest DR acceptance probability.
+I do not derive the higher-order formulae here (see Mira's thesis).
 
 
+\subsection{DR for proposals given by deterministic maps}
 
+Our application of DR to adaptive HMC is in its M-H step.
+The first proposal is $q_1(x,y) = \delta(y-F_1(x))$,
+and the 2nd $q_2(x,s,y) = \delta(y-F_2(x))$ which in our case is independent of
+the rejected proposed $s$.
+For us $F_1 = L_\eps^n P$ for some stepsize $\eps$, then
+$F_2 = L_{\eps/a}^n P$ for some stepsize $a>1$ times smaller;
+however, all we need to know is that they are both volume-preserving
+involutions.
+Then by Lemma~\ref{l:mhmap} we already know
+$\al_1(x,s) = \min \left[ \pi(s)/\pi(x), 1 \right]$.
+Naively substituting the map proposal kernels into 
+\eqref{al2rat} gives, for almost all $s\in S$,
+$$
+\pi(x) \delta(s-F_1(x)) [1-\al_1(x,s)] \delta(y-F_2(x)) \al_2(x,s,y) =
+\pi(y) \delta(s-F_1(y)) [1-\al_1(y,s)] \delta(x-F_2(y)) \al_2(y,s,x).
+$$
+Yet this cannot hold as $s$-dependent measures on $S\times S$,
+since for the LHS to be nonzero $F_1(x)=s$, but for the RHS
+$F_1(y)=s$; thus (since $F_1$ is injective) it could only hold for $x=y$.
+
+Thus Mira's mechanism fails, and one must instead impose symmetry
+{\em after} integrating over $ds$. Writing symmetry for the non-rejected
+part of the integral from \eqref{dr} gives the more general condition
+$$
+\pi(x) \int q_1(x,s) [1-\al_1(x,s)]q_2(x,s,y)\al_2(x,s,y) ds =
+\pi(y) \int q_1(y,s) [1-\al_1(y,s)]q_2(y,s,x)\al_2(y,s,x) ds
+$$
+Inserting the map proposal kernels gives
+$$
+\pi(x) \int \delta(s-F_1(x)) [1-\al_1(x,s)] \delta(y-F_2(x)) \al_2(x,s,y) ds =
+\pi(y) \int \delta(s-F_1(y)) [1-\al_1(y,s)] \delta(x-F_2(y)) \al_2(y,s,x) ds
+$$
+which simplifies (using that $F_2$ is an involution to ``cancel'' the associated
+$\delta$'s),
+\be
+\pi(x) [1-\al_1(x,F_1(x))] \al_2(x,F_1(x),y) =
+\pi(y) [1-\al_1(y,F_1(y))] \al_2(y,F_1(y),x)~,
+\label{al2rathmc}
+\ee
+a condition for $\al_2$ which is only defined
+on the 2nd proposal surface $y=F_2(x)$.
+Thus for $y=F_2(x)$ we get the rule, simplifying using $\al_1$,
+\bea
+\al_2(x,F_1(x),F_2(x)) &=& \min\left[ \frac{\pi(F_2(x)) [1-\al_1(F_2(x),F_1(F_2(x)))]}
+  {\pi(x) [1-\al_1(x,F_1(x))]} , 1 \right]
+\nonumber \\
+&=& \min\left\{ \frac{\max[\pi(F_2(x)) - \pi(F_1(F_2(x)))]}{\pi(x) - \pi(F_1(x))}, 1\right\}~.
+\label{al2hmc}
+  \eea
+The middle argument of $\al_2$, being deterministically given by the first argument, is slightly redundant.
+The rule involves four densities to check: $x$, $F_1(x)$, $F_2(x)$, and $F_1(F_2(x))$ a new ghost (pre)image of the 2nd proposal.
 
 
 
